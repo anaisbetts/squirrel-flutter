@@ -1,0 +1,22 @@
+name: squirrel
+description: Create installable desktop apps
+version: 0.0.1
+author: Ani Betts <anais@anaisbetts.org>
+homepage: https://fill.this.in/later
+
+environment:
+  sdk: ">=2.12.0 <3.0.0"
+  flutter: ">=2.0.1"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  args: ^2.0.0
+  jinja: ^0.3.0
+  path: ^1.8.0
+  yaml: ^3.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  pedantic: ^1.11.0
