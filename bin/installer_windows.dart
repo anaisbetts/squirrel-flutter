@@ -10,18 +10,12 @@ import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
 import 'package:jinja/jinja.dart';
 
-// NB: Why do I have to do this
-String _fixPath(String thePath) {
-  if (!Platform.isWindows) return thePath;
-
-  return path.normalize(thePath).replaceFirst('\\', '');
-}
-
-final rootDir = _fixPath(path.join(path.dirname(Platform.script.path), '..'));
+final rootDir = path
+    .canonicalize(path.join(path.dirname(path.fromUri(Platform.script)), '..'));
 
 // NB: there has got to be a better way to do this
-final appDir = _fixPath(
-    path.join(path.dirname(Uri.parse(Platform.packageConfig!).path), '..'));
+final appDir = path.canonicalize(
+    path.join(path.dirname(path.fromUri(Platform.packageConfig!)), '..'));
 
 final pubspecYaml = path.join(appDir, 'pubspec.yaml');
 
