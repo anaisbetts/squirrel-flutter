@@ -9,13 +9,13 @@
     <iconUrl>{{ iconUrl }}</iconUrl
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>{{ description }}</description>
-    <copyright>{{ copyright }}</copyright>
+    <copyright>All Rights Reserved</copyright>
   </metadata>
 
   <files>
     <file src="Squirrel.exe" target="lib\net45\squirrel.exe" />
-    {% for f in additionalFiles %}
+        {% for f in additionalFiles %}
     <file src="{{ f.src }}" target="lib\net45\{{ f.target }}" />
-    {% endfor %}
+        {% endfor %}
   </files>
 </package>
