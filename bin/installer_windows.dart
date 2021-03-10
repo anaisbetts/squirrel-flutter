@@ -4,8 +4,6 @@ library installer_windows;
 
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:yaml/yaml.dart';
 import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
@@ -49,7 +47,12 @@ String stringOrThrow(dynamic? d, String err) {
 
 String parseVersion(dynamic? v) {
   final ver = stringOrThrow(v, 'Your app needs a version');
-  return ver.replaceFirst(RegExp(r'[-+].*$'), '');
+  return ver.replaceFirst(RegExp(r'[-+].*$'), '').trimLeft();
+}
+
+String parseAuthor(dynamic? a) {
+  final author = stringOrThrow(a, 'Your pubspec needs an authors section');
+  return author.replaceAll(RegExp(r' <.*?>'), '').trimLeft();
 }
 
 class PubspecParams {
@@ -94,8 +97,7 @@ class PubspecParams {
         windowsSection['appFriendlyName'] ?? appPubspec['title'],
         'Your app needs a description!');
     final version = parseVersion(appPubspec['version']);
-    final authors = stringOrThrow(
-        appPubspec['authors'], 'Your pubspec must have an authors section');
+    final authors = parseAuthor(appPubspec['authors']);
     final description = stringOrThrow(windowsSection['appDescription'] ?? title,
         'Your app must have a description');
     final certificateFile = windowsSection['certificateFile']?.toString();
@@ -144,6 +146,13 @@ Future<int> main(List<String> args) async {
       authors: pubspec.authors,
       iconUrl: pubspec.appIconUrl,
       additionalFiles: <dynamic>[]));
+
+  // Copy Squirrel.exe into the app dir and squish the setup icon in
+  // Squish the icon into main exe too
+  // ls -r to get our file tree and create a temp dir
+  // nuget pack
+  // Run syncReleases
+  // Releasify!
 
   return 0;
 }
