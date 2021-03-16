@@ -5,7 +5,6 @@ library installer_windows;
 import 'dart:io';
 
 import 'package:yaml/yaml.dart';
-import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
 import 'package:jinja/jinja.dart';
 
@@ -28,7 +27,8 @@ squirrel:
     certificateFile: "foo"
     overrideSigningParameters: "bar"
     loadingGif: "baz"
-    iconUrl: "blahhgh"
+    appIcon: "blamf"
+    uninstallIconPngUrl: "blahhgh"
     appFriendlyName: "blaf"
     appDescription: "blaf"
     setupIcon: "bamf"
@@ -55,16 +55,31 @@ String parseAuthor(dynamic? a) {
   return author.replaceAll(RegExp(r' <.*?>'), '').trimLeft();
 }
 
+String? canonicalizePubspecPath(String? relativePath) {
+  if (relativePath == null) {
+    return null;
+  }
+
+  if (path.isAbsolute(relativePath)) {
+    return relativePath;
+  }
+
+  return path.normalize(path.join(appDir, relativePath));
+}
+
+const defaultUninstallPngUrl = 'https://fill/in/this/later';
+
 class PubspecParams {
   final String name;
   final String title;
   final String version;
   final String authors;
   final String description;
+  final String appIcon;
   final String? certificateFile;
   final String? overrideSigningParameters;
   final String? loadingGif;
-  final String? appIconUrl;
+  final String? uninstallIconPngUrl;
   final String? setupIcon;
   final String releaseDirectory;
   final bool buildEnterpriseMsiPackage;
@@ -76,10 +91,11 @@ class PubspecParams {
       this.version,
       this.authors,
       this.description,
+      this.appIcon,
       this.certificateFile,
       this.overrideSigningParameters,
       this.loadingGif,
-      this.appIconUrl,
+      this.uninstallIconPngUrl,
       this.setupIcon,
       this.releaseDirectory,
       this.buildEnterpriseMsiPackage,
@@ -100,14 +116,22 @@ class PubspecParams {
     final authors = parseAuthor(appPubspec['authors']);
     final description = stringOrThrow(windowsSection['appDescription'] ?? title,
         'Your app must have a description');
-    final certificateFile = windowsSection['certificateFile']?.toString();
+    final appIcon = canonicalizePubspecPath(stringOrThrow(
+        windowsSection['appIcon'], 'Your app must have an icon'))!;
+    final certificateFile =
+        canonicalizePubspecPath(windowsSection['certificateFile']?.toString());
     final overrideSigningParameters =
         windowsSection['overrideSigningParameters']?.toString();
-    final loadingGif = windowsSection['loadingGif']?.toString();
-    final appIconUrl = windowsSection['appIconUrl']?.toString();
-    final setupIcon = windowsSection['setupIcon']?.toString();
-    final releaseDirectory = windowsSection['releaseDirectory']?.toString() ??
-        path.join(appDir, 'build');
+    final loadingGif =
+        canonicalizePubspecPath(windowsSection['loadingGif']?.toString());
+    final uninstallIconPngUrl =
+        (windowsSection['uninstallIconPngUrl'] ?? defaultUninstallPngUrl)
+            .toString();
+    final setupIcon = canonicalizePubspecPath(
+        (windowsSection['setupIcon'] ?? appIcon).toString());
+    final releaseDirectory = canonicalizePubspecPath(
+        windowsSection['releaseDirectory']?.toString() ??
+            path.join(appDir, 'build'))!;
     final buildEnterpriseMsiPackage =
         windowsSection['buildEnterpriseMsiPackage'] == true ? true : false;
     final dontBuildDeltas =
@@ -119,15 +143,30 @@ class PubspecParams {
         version,
         authors,
         description,
+        appIcon,
         certificateFile,
         overrideSigningParameters,
         loadingGif,
-        appIconUrl,
+        uninstallIconPngUrl,
         setupIcon,
         releaseDirectory,
         buildEnterpriseMsiPackage,
         dontBuildDeltas);
   }
+}
+
+Future<ProcessResult> runUtil(String name, List<String> args,
+    {String? cwd}) async {
+  final cmd = path.join(rootDir, 'vendor', name);
+  final ret = await Process.run(cmd, args, workingDirectory: cwd);
+
+  if (ret.exitCode != 0) {
+    final msg =
+        "Failed to run $cmd ${args.join(' ')}\n${ret.stdout}\n${ret.stderr}";
+    throw Exception(msg);
+  }
+
+  return ret;
 }
 
 Future<int> main(List<String> args) async {
@@ -137,22 +176,78 @@ Future<int> main(List<String> args) async {
       await File(path.join(rootDir, 'nuspec.jinja')).readAsString());
 
   final pubspec = PubspecParams.fromYaml(yaml);
-
-  print(template.render(
-      name: pubspec.name,
-      title: pubspec.title,
-      description: pubspec.description,
-      version: pubspec.version,
-      authors: pubspec.authors,
-      iconUrl: pubspec.appIconUrl,
-      additionalFiles: <dynamic>[]));
+  final buildDirectory = canonicalizePubspecPath(
+      path.join('build', 'windows', 'runner', 'Release'))!;
 
   // Copy Squirrel.exe into the app dir and squish the setup icon in
-  // Squish the icon into main exe too
-  // ls -r to get our file tree and create a temp dir
-  // nuget pack
-  // Run syncReleases
-  // Releasify!
+  final tgtSquirrel = path.join(buildDirectory, 'squirrel.exe');
+  if (!await File(tgtSquirrel).exists()) {
+    await File(path.join(rootDir, 'vendor', 'squirrel.exe')).copy(tgtSquirrel);
+  }
 
+  if (pubspec.setupIcon != null) {
+    await runUtil(
+        'rcedit.exe', ['--set-icon', pubspec.setupIcon!, tgtSquirrel]);
+  }
+
+  // Squish the icon into main exe
+  await runUtil('rcedit.exe', [
+    '--set-icon',
+    pubspec.appIcon,
+    path.join(buildDirectory, '${pubspec.name}.exe')
+  ]);
+
+  // ls -r to get our file tree and create a temp dir
+  final filePaths = await Directory(buildDirectory)
+      .list(recursive: true)
+      .where((f) => f.statSync().type == FileSystemEntityType.file)
+      .map((f) => f.path.replaceFirst(buildDirectory, '').substring(1))
+      .toList();
+
+  final nuspecContent = template
+      .render(
+          name: pubspec.name,
+          title: pubspec.title,
+          description: pubspec.description,
+          version: pubspec.version,
+          authors: pubspec.authors,
+          iconUrl: pubspec.uninstallIconPngUrl,
+          additionalFiles: filePaths.map((f) => ({'src': f, 'target': f})))
+      .toString();
+
+  // NB: NuGet sucks
+  final tmpDir = await Directory.systemTemp.createTemp('si-');
+  final nuspec = path.join(tmpDir.path, 'spec.nuspec');
+  await File(nuspec).writeAsString(nuspecContent);
+  await runUtil('nuget.exe', [
+    'pack',
+    nuspec,
+    '-BasePath',
+    buildDirectory,
+    '-OutputDirectory',
+    tmpDir.path,
+    '-NoDefaultExcludes'
+  ]);
+
+  final nupkgFile =
+      (await tmpDir.list().firstWhere((f) => f.path.contains('.nupkg'))).path;
+
+  // Run syncReleases
+  // XXX TODO
+
+  // Releasify!
+  var releaseDir = Directory(pubspec.releaseDirectory);
+  if (!await releaseDir.exists()) {
+    await releaseDir.create(recursive: true);
+  }
+
+  var args = [
+    '--releasify',
+    nupkgFile,
+    '--releaseDir',
+    releaseDir.path,
+  ];
+
+  await runUtil('squirrel.exe', args);
   return 0;
 }

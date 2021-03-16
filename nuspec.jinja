@@ -13,7 +13,6 @@
   </metadata>
 
   <files>
-    <file src="Squirrel.exe" target="lib\net45\squirrel.exe" />
     {% for f in additionalFiles %}
     <file src="{{ f.src }}" target="lib\net45\{{ f.target }}" />
     {% endfor %}
