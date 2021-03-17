@@ -78,7 +78,7 @@ class PubspecParams {
   final String appIcon;
   final String? certificateFile;
   final String? overrideSigningParameters;
-  final String? loadingGif;
+  final String loadingGif;
   final String? uninstallIconPngUrl;
   final String? setupIcon;
   final String releaseDirectory;
@@ -122,8 +122,9 @@ class PubspecParams {
         canonicalizePubspecPath(windowsSection['certificateFile']?.toString());
     final overrideSigningParameters =
         windowsSection['overrideSigningParameters']?.toString();
-    final loadingGif =
-        canonicalizePubspecPath(windowsSection['loadingGif']?.toString());
+    final loadingGif = canonicalizePubspecPath((windowsSection['loadingGif'] ??
+            path.join(rootDir, 'vendor', 'default-loading.gif'))
+        .toString())!;
     final uninstallIconPngUrl =
         (windowsSection['uninstallIconPngUrl'] ?? defaultUninstallPngUrl)
             .toString();
@@ -232,21 +233,40 @@ Future<int> main(List<String> args) async {
   final nupkgFile =
       (await tmpDir.list().firstWhere((f) => f.path.contains('.nupkg'))).path;
 
+  // Prepare the release directory
+  final releaseDir = Directory(pubspec.releaseDirectory);
+  if (await releaseDir.exists()) {
+    await releaseDir.delete(recursive: true);
+  }
+
+  await releaseDir.create(recursive: true);
+
   // Run syncReleases
   // XXX TODO
 
   // Releasify!
-  var releaseDir = Directory(pubspec.releaseDirectory);
-  if (!await releaseDir.exists()) {
-    await releaseDir.create(recursive: true);
-  }
-
   var args = [
     '--releasify',
     nupkgFile,
     '--releaseDir',
     releaseDir.path,
+    '--loadingGif',
+    pubspec.loadingGif,
   ];
+
+  // TODO: Signing!
+
+  if (pubspec.dontBuildDeltas) {
+    args.add('--no-delta');
+  }
+
+  if (!pubspec.buildEnterpriseMsiPackage) {
+    args.add('--no-msi');
+  }
+
+  if (pubspec.setupIcon != null) {
+    args.addAll(['--setupIcon', pubspec.setupIcon!]);
+  }
 
   await runUtil('squirrel.exe', args);
   return 0;
