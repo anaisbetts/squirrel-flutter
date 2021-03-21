@@ -67,6 +67,25 @@ String? canonicalizePubspecPath(String? relativePath) {
   return path.normalize(path.join(appDir, relativePath));
 }
 
+String? generateSigningParams(String? certificateFile) {
+  final certPass = Platform.environment['SQUIRREL_CERT_PASSWORD'];
+  final overrideParams =
+      Platform.environment['SQUIRREL_OVERRIDE_SIGNING_PARAMS'];
+
+  if (overrideParams != null) {
+    return overrideParams;
+  }
+
+  if (certPass == null) {
+    if (certificateFile == null) return null;
+
+    throw Exception(
+        'You must set either the SQUIRREL_CERT_PASSWORD or the SQUIRREL_OVERRIDE_SIGNING_PARAMS environment variable');
+  }
+
+  return '/a /f \"$certificateFile\" /p $certPass /v /fd sha256 /tr http://timestamp.digicert.com /td sha256';
+}
+
 const defaultUninstallPngUrl = 'https://fill/in/this/later';
 
 class PubspecParams {
@@ -121,7 +140,8 @@ class PubspecParams {
     final certificateFile =
         canonicalizePubspecPath(windowsSection['certificateFile']?.toString());
     final overrideSigningParameters =
-        windowsSection['overrideSigningParameters']?.toString();
+        windowsSection['overrideSigningParameters']?.toString() ??
+            generateSigningParams(certificateFile);
     final loadingGif = canonicalizePubspecPath((windowsSection['loadingGif'] ??
             path.join(rootDir, 'vendor', 'default-loading.gif'))
         .toString())!;
@@ -137,6 +157,8 @@ class PubspecParams {
         windowsSection['buildEnterpriseMsiPackage'] == true ? true : false;
     final dontBuildDeltas =
         windowsSection['dontBuildDeltas'] == true ? true : false;
+
+    if (certificateFile != null && overrideSigningParameters != null) {}
 
     return PubspecParams(
         name,
@@ -254,7 +276,12 @@ Future<int> main(List<String> args) async {
     pubspec.loadingGif,
   ];
 
-  // TODO: Signing!
+  // NB: We let the Pubspec class handle generating the default signing
+  // parameters so from the perspective of this part of the code, there is *only*
+  // either a "custom" signing parameter, or nothing
+  if (pubspec.overrideSigningParameters != null) {
+    args.addAll(['-n', pubspec.overrideSigningParameters!]);
+  }
 
   if (pubspec.dontBuildDeltas) {
     args.add('--no-delta');
