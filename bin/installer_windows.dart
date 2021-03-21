@@ -64,6 +64,11 @@ String? canonicalizePubspecPath(String? relativePath) {
     return relativePath;
   }
 
+  if (relativePath.startsWith('http://') ||
+      relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+
   return path.normalize(path.join(appDir, relativePath));
 }
 
@@ -101,6 +106,7 @@ class PubspecParams {
   final String? uninstallIconPngUrl;
   final String? setupIcon;
   final String releaseDirectory;
+  final String? releaseUrl;
   final bool buildEnterpriseMsiPackage;
   final bool dontBuildDeltas;
 
@@ -117,6 +123,7 @@ class PubspecParams {
       this.uninstallIconPngUrl,
       this.setupIcon,
       this.releaseDirectory,
+      this.releaseUrl,
       this.buildEnterpriseMsiPackage,
       this.dontBuildDeltas);
 
@@ -153,6 +160,9 @@ class PubspecParams {
     final releaseDirectory = canonicalizePubspecPath(
         windowsSection['releaseDirectory']?.toString() ??
             path.join(appDir, 'build'))!;
+    final releaseUrl = canonicalizePubspecPath((windowsSection['releaseUrl'] ??
+            Platform.environment['SQUIRREL_RELEASE_URL'])
+        .toString());
     final buildEnterpriseMsiPackage =
         windowsSection['buildEnterpriseMsiPackage'] == true ? true : false;
     final dontBuildDeltas =
@@ -173,6 +183,7 @@ class PubspecParams {
         uninstallIconPngUrl,
         setupIcon,
         releaseDirectory,
+        releaseUrl,
         buildEnterpriseMsiPackage,
         dontBuildDeltas);
   }
@@ -264,7 +275,22 @@ Future<int> main(List<String> args) async {
   await releaseDir.create(recursive: true);
 
   // Run syncReleases
-  // XXX TODO
+  if (pubspec.releaseUrl != null) {
+    if (pubspec.releaseUrl!.startsWith('http://') &&
+        Platform.environment[
+                'SQUIRREL_I_KNOW_THAT_USING_HTTP_URLS_IS_REALLY_BAD'] ==
+            null) {
+      throw Exception('''
+You MUST use an HTTPS URL for updates, it is *extremely* unsafe for you to 
+update software via HTTP. If you understand this and you are absolutely sure 
+that you are not putting your users at risk, set the environment variable
+SQUIRREL_I_KNOW_THAT_USING_HTTP_URLS_IS_REALLY_BAD to 'I hereby promise.'
+''');
+    }
+
+    await runUtil(
+        'SyncReleases.exe', ['-r', releaseDir.path, '-u', pubspec.releaseUrl!]);
+  }
 
   // Releasify!
   var args = [
