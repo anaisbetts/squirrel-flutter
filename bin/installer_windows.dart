@@ -162,7 +162,7 @@ class PubspecParams {
             path.join(appDir, 'build'))!;
     final releaseUrl = canonicalizePubspecPath((windowsSection['releaseUrl'] ??
             Platform.environment['SQUIRREL_RELEASE_URL'])
-        .toString());
+        ?.toString());
     final buildEnterpriseMsiPackage =
         windowsSection['buildEnterpriseMsiPackage'] == true ? true : false;
     final dontBuildDeltas =
