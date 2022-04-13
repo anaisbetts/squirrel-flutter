@@ -4,16 +4,26 @@ library installer_windows;
 
 import 'dart:io';
 
-import 'package:yaml/yaml.dart';
-import 'package:path/path.dart' as path;
 import 'package:jinja/jinja.dart';
+import 'package:package_config/package_config.dart' show findPackageConfig;
+import 'package:path/path.dart' as path;
+import 'package:yaml/yaml.dart';
 
-final rootDir = path
-    .canonicalize(path.join(path.dirname(path.fromUri(Platform.script)), '..'));
+late String rootDir;
+late String appDir;
 
-// NB: there has got to be a better way to do this
-final appDir = path.canonicalize(
-    path.join(path.dirname(path.fromUri(Platform.packageConfig!)), '..'));
+Future<void> _initPaths() async {
+  final packagesConfig = await findPackageConfig(Directory.current);
+  if (packagesConfig == null) {
+    throw 'Failed to locate or read package config.';
+  }
+
+  final squirrelPackage = packagesConfig.packages
+      .firstWhere((package) => package.name == 'squirrel');
+  rootDir = path.join(path.fromUri(squirrelPackage.packageUriRoot), '..');
+  appDir = path.canonicalize(
+      path.join(path.dirname(path.fromUri(Platform.packageConfig!)), '..'));
+}
 
 final pubspecYaml = path.join(appDir, 'pubspec.yaml');
 
@@ -204,6 +214,7 @@ Future<ProcessResult> runUtil(String name, List<String> args,
 }
 
 Future<int> main(List<String> args) async {
+  await _initPaths();
   final yaml = loadYaml(await File(pubspecYaml).readAsString());
 
   final template = Environment().fromString(
