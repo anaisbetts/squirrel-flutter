@@ -10,7 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:jinja/jinja.dart';
 
 final rootDir = path
-    .canonicalize(path.join(path.dirname(path.fromUri(currentMirrorSystem().findLibrary(#installer_windows).uri)), '..'));
+    .canonicalize(path.join(path.dirname(currentMirrorSystem().findLibrary(#installer_windows).uri.path), '..'));
 
 // NB: there has got to be a better way to do this
 final appDir = path.canonicalize(
