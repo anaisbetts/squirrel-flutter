@@ -3,13 +3,14 @@
 library installer_windows;
 
 import 'dart:io';
+import 'dart:mirrors';
 
 import 'package:yaml/yaml.dart';
 import 'package:path/path.dart' as path;
 import 'package:jinja/jinja.dart';
 
 final rootDir = path
-    .canonicalize(path.join(path.dirname(path.fromUri(Platform.script)), '..'));
+    .canonicalize(path.join(path.dirname(path.fromUri(currentMirrorSystem().findLibrary(#installer_windows).uri)), '..'));
 
 // NB: there has got to be a better way to do this
 final appDir = path.canonicalize(
