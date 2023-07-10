@@ -23,4 +23,4 @@ Before this package reaches 1.0, it will have a proper API to do this!
 
 ## Where can I read more, because this README is extremely lacking in content! (I know) 
 
-Read the Squirrel documentation - note that some of the names in this package have been clarified / simplified vs. what they are called in Squirrel.Windows, read installer_windows.dart in this package to see how things map.
+Read the [Squirrel documentation](https://github.com/Squirrel/Squirrel.Windows/blob/develop/docs/readme.md) - note that some of the names in this package have been clarified / simplified vs. what they are called in Squirrel.Windows, read installer_windows.dart in this package to see how things map.
