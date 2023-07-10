@@ -1,6 +1,6 @@
 name: squirrel
 description: Create installable desktop apps
-version: 0.1.0
+version: 0.2.0
 author: Ani Betts <anais@anaisbetts.org>
 homepage: https://github.com/anaisbetts/squirrel-flutter
 
