@@ -1,3 +1,8 @@
-## [0.0.1] - TODO: Add release date.
+## [0.0.1] 
 
-* TODO: Describe initial release.
+* Initial Release
+
+## [0.1.0] - 10.07.2023
+
+* Fix breaking change in newer Flutter versions (#9, thanks @v3ntus)
+* Fix error when no releaseUrl is specified (#4, thanks @RustamG)
