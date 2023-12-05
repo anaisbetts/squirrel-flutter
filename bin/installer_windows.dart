@@ -212,7 +212,7 @@ Future<int> main(List<String> args) async {
 
   final pubspec = PubspecParams.fromYaml(yaml);
   final buildDirectory = canonicalizePubspecPath(
-      path.join('build', 'windows', 'runner', 'Release'))!;
+      path.join('build', 'windows', 'x64', 'runner', 'Release'))!;
 
   // Copy Squirrel.exe into the app dir and squish the setup icon in
   final tgtSquirrel = path.join(buildDirectory, 'squirrel.exe');
